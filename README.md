@@ -1,8 +1,8 @@
 # WhatsApp Lite - for Windows
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg) ![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg) ![.NET](https://img.shields.io/badge/.NET-10.0-purple.svg)
 
-A lightweight, high-performance desktop client for WhatsApp Web, built with **.NET 8 (WPF)** and **WebView2**.
+A lightweight, high-performance desktop client for WhatsApp Web, built with **.NET 10 (WPF)** and **WebView2**.
 
 This project aims to provide a native-feeling Windows experience without the bloat of Electron-based apps. It uses the system's Edge WebView2 runtime to render WhatsApp Web while wrapping it in a custom, resource-efficient WPF shell.
 
@@ -20,14 +20,14 @@ This project aims to provide a native-feeling Windows experience without the blo
 To run or build this application, you need:
 
 - **Windows 10 or 11** (x64 architecture).
-- **.NET Desktop Runtime 8.0** ([Download Here](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)).
+- **.NET Desktop Runtime 10.0** ([Download Here](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)).
 - **WebView2 Runtime** (Pre-installed on Win10/11, or [Download Here](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)).
 
 ## 🆚 Comparison
 
 | Feature | WhatsApp Lite (This App) | Official WhatsApp Desktop |
 | :--- | :--- | :--- |
-| **Technology** | Native .NET 8 + WebView2 | Electron / UWP |
+| **Technology** | Native .NET 10 + WebView2 | Electron / UWP |
 | **RAM Usage** | **~120 MB** (Efficient) | **400 MB+** (Heavy) |
 | **Startup Time** | **Instant** (< 1s) | Slow (Splash Screen) |
 | **Privacy** | **Sandboxed** (No Telemetry) | Telemetry & Tracking |
@@ -81,7 +81,7 @@ To create a standalone executable for distribution:
 dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true
 ```
 
-The output file will be in `bin/Release/net8.0-windows/win-x64/publish/`.
+The output file will be in `bin/Release/net10.0-windows/win-x64/publish/`.
 
 ## 🤝 Contributing
 

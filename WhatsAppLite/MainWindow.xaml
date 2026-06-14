@@ -15,19 +15,158 @@
         WindowState="Maximized"
         BorderThickness="1"
         Icon="whatsapp.ico"
-        BorderBrush="#333333">
+        BorderBrush="#1F1F1F">
 
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="32" GlassFrameThickness="0" CornerRadius="0" ResizeBorderThickness="5" UseAeroCaptionButtons="False"/>
+        <WindowChrome CaptionHeight="40" GlassFrameThickness="0" CornerRadius="0" ResizeBorderThickness="5" UseAeroCaptionButtons="False"/>
     </WindowChrome.WindowChrome>
 
     <Window.Resources>
+        <!-- Tab Button Style - Integrated in Title Bar -->
+        <Style x:Key="TabButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#2D2D2D"/>
+            <Setter Property="Foreground" Value="#888888"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="TabBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderThickness="1,1,1,0"
+                                BorderBrush="Transparent"
+                                CornerRadius="6,6,0,0"
+                                Padding="{TemplateBinding Padding}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <!-- Tab Icon (green circle) -->
+                                <Ellipse Grid.Column="0" Width="8" Height="8" 
+                                        Fill="#25D366" Margin="0,0,8,0"
+                                        VerticalAlignment="Center"/>
+                                
+                                <!-- Tab Title (uses Content, not Tag) -->
+                                <TextBlock Grid.Column="1" 
+                                          x:Name="TabTitle"
+                                          Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Content}"
+                                          VerticalAlignment="Center"
+                                          Foreground="{TemplateBinding Foreground}"
+                                          TextTrimming="CharacterEllipsis"
+                                          MaxWidth="100"/>
+                                
+                                <!-- Close Button (simple x) -->
+                                <Border Grid.Column="2" 
+                                        x:Name="CloseBtn"
+                                        Background="Transparent"
+                                        CornerRadius="3"
+                                        Margin="10,0,0,0"
+                                        Cursor="Hand"
+                                        Visibility="Collapsed"
+                                        VerticalAlignment="Center"
+                                        MouseLeftButtonDown="TabClose_Click">
+                                    <TextBlock Text="x"
+                                              FontSize="11"
+                                              FontWeight="Bold"
+                                              Foreground="#888888"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              IsHitTestVisible="False"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                                <Setter TargetName="TabBorder" Property="Background" Value="#383838"/>
+                                <Setter TargetName="CloseBtn" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="#3A3A3A"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Selected Tab Style -->
+        <Style x:Key="SelectedTabButtonStyle" TargetType="Button" BasedOn="{StaticResource TabButtonStyle}">
+            <Setter Property="Background" Value="#1F1F1F"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="TabBorder"
+                                Background="#1F1F1F"
+                                BorderThickness="1,1,1,0"
+                                BorderBrush="#25D366"
+                                CornerRadius="6,6,0,0"
+                                Padding="{TemplateBinding Padding}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <!-- Tab Icon (green circle) -->
+                                <Ellipse Grid.Column="0" Width="8" Height="8" 
+                                        Fill="#25D366" Margin="0,0,8,0"
+                                        VerticalAlignment="Center"/>
+                                
+                                <!-- Tab Title -->
+                                <TextBlock Grid.Column="1" 
+                                          x:Name="TabTitle"
+                                          Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Content}"
+                                          VerticalAlignment="Center"
+                                          Foreground="#FFFFFF"
+                                          TextTrimming="CharacterEllipsis"
+                                          MaxWidth="100"/>
+                                
+                                <!-- Close Button (always visible on selected tab) -->
+                                <Border Grid.Column="2" 
+                                        x:Name="CloseBtn"
+                                        Background="Transparent"
+                                        CornerRadius="3"
+                                        Margin="10,0,0,0"
+                                        Cursor="Hand"
+                                        VerticalAlignment="Center"
+                                        MouseLeftButtonDown="TabClose_Click">
+                                    <TextBlock Text="x"
+                                              FontSize="11"
+                                              FontWeight="Bold"
+                                              Foreground="#CCCCCC"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              IsHitTestVisible="False"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="CloseBtn" Property="Background" Value="#3D3D3D"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Title Bar Button Style -->
         <Style TargetType="Button" x:Key="TitleBarButton">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="#CCCCCC"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Width" Value="46"/>
-            <Setter Property="Height" Value="32"/>
+            <Setter Property="Height" Value="40"/>
             <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
             <Setter Property="FontSize" Value="10"/>
             <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
@@ -42,11 +181,13 @@
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#333333"/>
+                    <Setter Property="Background" Value="#3D3D3D"/>
                     <Setter Property="Foreground" Value="White"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <!-- Close Button Style -->
         <Style TargetType="Button" x:Key="CloseButton" BasedOn="{StaticResource TitleBarButton}">
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
@@ -55,29 +196,179 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <!-- New Tab Button Style -->
+        <Style x:Key="NewTabButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#666666"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="Light"/>
+            <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="NewTabBorder" Background="{TemplateBinding Background}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="NewTabBorder" Property="Background" Value="#383838"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Action Button Style -->
+        <Style x:Key="ActionButton" TargetType="Button">
+            <Setter Property="Background" Value="#25D366"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="MinWidth" Value="120"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#1EBE57"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SecondaryActionButton" TargetType="Button" BasedOn="{StaticResource ActionButton}">
+            <Setter Property="Background" Value="#333333"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#444444"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Storyboard x:Key="FadeIn">
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.Opacity)">
+                <EasingDoubleKeyFrame KeyTime="0" Value="0"/>
+                <EasingDoubleKeyFrame KeyTime="0:0:0.3" Value="1"/>
+            </DoubleAnimationUsingKeyFrames>
+        </Storyboard>
+        <Storyboard x:Key="FadeOut">
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.Opacity)">
+                <EasingDoubleKeyFrame KeyTime="0" Value="1"/>
+                <EasingDoubleKeyFrame KeyTime="0:0:0.3" Value="0"/>
+            </DoubleAnimationUsingKeyFrames>
+        </Storyboard>
     </Window.Resources>
 
-    <Grid Background="#202020">
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+            <BeginStoryboard Storyboard="{StaticResource FadeIn}"/>
+        </EventTrigger>
+    </Window.Triggers>
+
+    <Grid Background="#1F1F1F">
         <Grid.RowDefinitions>
-            <RowDefinition Height="32"/>
+            <RowDefinition Height="40"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Custom Title Bar -->
-        <Grid Grid.Row="0" Background="#202020">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0">
-                <Image Source="{Binding Icon, RelativeSource={RelativeSource AncestorType=Window}}" Width="16" Height="16" Margin="0,0,10,0" RenderOptions.BitmapScalingMode="HighQuality"/>
-                <TextBlock Text="WhatsApp Lite" Foreground="#CCCCCC" FontFamily="Segoe UI" FontSize="12" VerticalAlignment="Center"/>
-            </StackPanel>
+        <!-- Title Bar with Tabs - Windows Terminal Style -->
+        <Grid Grid.Row="0" Background="#2D2D2D">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
 
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Style="{StaticResource TitleBarButton}" Content="&#xE921;" Click="MinimizeButton_Click" ToolTip="Minimize"/>
-                <Button Style="{StaticResource TitleBarButton}" Content="&#xE922;" Click="MaximizeButton_Click" ToolTip="Maximize"/>
-                <Button Style="{StaticResource CloseButton}" Content="&#xE8BB;" Click="CloseButton_Click" ToolTip="Close"/>
-            </StackPanel>
+            <!-- App Icon -->
+            <Image Grid.Column="0" 
+                   Source="{Binding Icon, RelativeSource={RelativeSource AncestorType=Window}}" 
+                   Width="16" Height="16" 
+                   VerticalAlignment="Center"
+                   Margin="10,0,0,0"
+                   RenderOptions.BitmapScalingMode="HighQuality"/>
+
+            <!-- Tab Buttons Container -->
+            <Grid Grid.Column="1" Margin="8,0,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <ScrollViewer Grid.Column="0" 
+                             HorizontalScrollBarVisibility="Auto" 
+                             VerticalScrollBarVisibility="Disabled"
+                             VerticalAlignment="Top"
+                             Margin="0,4,0,0">
+                    <StackPanel Orientation="Horizontal" x:Name="TabButtonsPanel"/>
+                </ScrollViewer>
+
+                <!-- New Tab Button -->
+                <Button Grid.Column="1" 
+                        Style="{StaticResource NewTabButtonStyle}" 
+                        Content="+"
+                        Click="NewTabButton_Click" 
+                        ToolTip="New Tab (Ctrl+T)"
+                        VerticalAlignment="Center"
+                        Margin="4,4,4,0"/>
+            </Grid>
+
+            <!-- Window Controls -->
+            <Button Grid.Column="2" Style="{StaticResource TitleBarButton}" Content="&#xE921;" Click="MinimizeButton_Click" ToolTip="Minimize"/>
+            <Button x:Name="MaximizeButton" Grid.Column="3" Style="{StaticResource TitleBarButton}" Content="&#xE922;" Click="MaximizeButton_Click" ToolTip="Maximize"/>
+            <Button Grid.Column="4" Style="{StaticResource CloseButton}" Content="&#xE8BB;" Click="CloseButton_Click" ToolTip="Close"/>
         </Grid>
 
-        <!-- Browser Content -->
-        <wv2:WebView2 Grid.Row="1" Name="Browser"/>
+        <!-- Main Content Area - Tab Content -->
+        <Grid Grid.Row="1">
+            <!-- Tab Content Presenter - Shows active WebView -->
+            <ContentPresenter x:Name="TabContentPresenter" 
+                            ContentSource="SelectedContent"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"/>
+
+            <!-- Loading Screen -->
+            <Grid x:Name="LoadingScreen" Background="#1F1F1F" Visibility="Visible">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <TextBlock Text="WhatsApp Lite" FontSize="32" FontWeight="Light" Foreground="#FFFFFF" HorizontalAlignment="Center" Margin="0,0,0,24" FontFamily="Segoe UI"/>
+                    <Grid Width="200" Height="20">
+                        <Border Width="200" Height="3" Background="#333333" CornerRadius="1.5"/>
+                        <Border x:Name="ProgressBarFill" Width="0" Height="3" HorizontalAlignment="Left" Background="#25D366" CornerRadius="1.5"/>
+                    </Grid>
+                    <TextBlock x:Name="LoadingStatus" Text="Initializing..." FontSize="13" Foreground="#888888" HorizontalAlignment="Center" Margin="0,16,0,0" FontFamily="Segoe UI"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Error Screen -->
+            <Grid x:Name="ErrorScreen" Background="#1F1F1F" Visibility="Collapsed">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="500">
+                    <TextBlock x:Name="ErrorIcon" Text="&#xE7BA;" FontSize="56" Foreground="#E81123" HorizontalAlignment="Center" Margin="0,0,0,16" FontFamily="Segoe MDL2 Assets"/>
+                    <TextBlock x:Name="ErrorTitle" Text="Something went wrong" FontSize="22" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center" Margin="0,0,0,8" FontFamily="Segoe UI"/>
+                    <TextBlock x:Name="ErrorMessage" Text="" FontSize="13" Foreground="#888888" HorizontalAlignment="Center" Margin="0,0,0,28" TextWrapping="Wrap" MaxWidth="450" TextAlignment="Center" FontFamily="Segoe UI"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button Style="{StaticResource ActionButton}" Content="Retry" Click="RetryButton_Click" Margin="0,0,12,0"/>
+                        <Button x:Name="DownloadRuntimeButton" Style="{StaticResource SecondaryActionButton}" Content="Download WebView2" Click="DownloadRuntimeButton_Click" Visibility="Collapsed" Margin="12,0,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Grid>
     </Grid>
 </Window>
