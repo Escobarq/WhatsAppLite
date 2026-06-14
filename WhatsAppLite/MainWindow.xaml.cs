@@ -11,14 +11,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Shapes;
 
 namespace WhatsAppLite;
 
 public partial class MainWindow : Window
 {
-    private List<TabInfo> _tabs = new List<TabInfo>();
-    private TabInfo? _selectedTab;
+    private List<TabSession> _tabs = new List<TabSession>();
+    private TabSession? _selectedTab;
     private bool _isInitialized;
     private bool _isRetrying;
     private int _initializingCount;
@@ -54,8 +53,9 @@ public partial class MainWindow : Window
             webView.HorizontalAlignment = HorizontalAlignment.Stretch;
             webView.VerticalAlignment = VerticalAlignment.Stretch;
 
-            var tabInfo = new TabInfo { WebView = webView };
-            _tabs.Add(tabInfo);
+            string tabName = $"Tab {_nextTabNumber++}";
+            var tabSession = new TabSession(webView, tabName);
+            _tabs.Add(tabSession);
 
             webView.Loaded += async (wvSender, wvArgs) =>
             {
@@ -65,11 +65,11 @@ public partial class MainWindow : Window
                         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                         BaseUserDataFolder);
 
-                    var environment = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
+                    var envOptions = new CoreWebView2EnvironmentOptions("--disable-gpu --disable-gpu-compositing --force-gpu-software-rendering");
+                    var environment = await CoreWebView2Environment.CreateAsync(null, userDataFolder, envOptions);
                     await webView.EnsureCoreWebView2Async(environment);
 
-                    ConfigureWebView(webView);
-                    RegisterTabEventHandlers(webView);
+                    tabSession.ConfigureAndRegisterHandlers(webView);
 
                     await webView.CoreWebView2.CallDevToolsProtocolMethodAsync(
                         "Emulation.setIdleOverride",
@@ -86,8 +86,8 @@ public partial class MainWindow : Window
                 }
             };
 
-            CreateTabButton(tabInfo);
-            SelectTab(tabInfo);
+            CreateTabButton(tabSession);
+            SelectTab(tabSession);
 
             _initializingCount--;
             if (_initializingCount == 0)
@@ -129,33 +129,28 @@ public partial class MainWindow : Window
         }
     }
 
-    private void CreateTabButton(TabInfo tabInfo)
+    private void CreateTabButton(TabSession tabSession)
     {
-        string tabName = $"Tab {_nextTabNumber++}";
-
         var tabButton = new Button
         {
             Style = (Style)FindResource("TabButtonStyle"),
-            Content = tabName,
-            DataContext = tabInfo
+            Content = tabSession.TabName,
+            DataContext = tabSession
         };
 
         tabButton.Click += TabButton_Click;
-
-        TabButtonsPanel.Children.Add(tabButton);
-        tabInfo.TabButton = tabButton;
-        tabInfo.TabName = tabName;
+        tabSession.TabButton = tabButton;
     }
 
     private void TabButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button btn && btn.DataContext is TabInfo tabInfo)
+        if (sender is Button btn && btn.DataContext is TabSession tabSession)
         {
-            SelectTab(tabInfo);
+            SelectTab(tabSession);
         }
     }
 
-    private void SelectTab(TabInfo tabInfo)
+    private void SelectTab(TabSession tabSession)
     {
         var normalStyle = (Style)FindResource("TabButtonStyle");
         var selectedStyle = (Style)FindResource("SelectedTabButtonStyle");
@@ -164,80 +159,68 @@ public partial class MainWindow : Window
         {
             if (tab.TabButton != null)
             {
-                bool isSelected = (tab == tabInfo);
+                bool isSelected = (tab == tabSession);
                 tab.TabButton.Style = isSelected ? selectedStyle : normalStyle;
             }
         }
 
-        _selectedTab = tabInfo;
-        TabContentPresenter.Content = tabInfo.WebView;
+        _selectedTab = tabSession;
+            WebViewContainer.Child = null;
+            tabSession.WebView.HorizontalAlignment = HorizontalAlignment.Stretch;
+            tabSession.WebView.VerticalAlignment = VerticalAlignment.Stretch;
+            tabSession.WebView.Width = double.NaN;
+            tabSession.WebView.Height = double.NaN;
+            WebViewContainer.Child = tabSession.WebView;
     }
 
     private void TabClose_Click(object sender, MouseButtonEventArgs e)
     {
         e.Handled = true;
 
-        var tabInfo = FindTabFromElement(sender as DependencyObject);
-        if (tabInfo != null)
+        var tabSession = FindTabFromElement(sender as DependencyObject);
+        if (tabSession != null)
         {
-            CloseTab(tabInfo);
+            CloseTab(tabSession);
         }
     }
 
-    private TabInfo? FindTabFromElement(DependencyObject? element)
+    private TabSession? FindTabFromElement(DependencyObject? element)
     {
         while (element != null)
         {
-            if (element is Button tabButton && tabButton.DataContext is TabInfo tabInfo)
+            if (element is Button tabButton && tabButton.DataContext is TabSession tabSession)
             {
-                return tabInfo;
+                return tabSession;
             }
             element = VisualTreeHelper.GetParent(element);
         }
         return null;
     }
 
-    private void CloseTab(TabInfo tabInfo)
+    private void CloseTab(TabSession tabSession)
     {
         if (_tabs.Count <= 1) return;
 
-        var tabIndex = _tabs.IndexOf(tabInfo);
-        tabInfo.WebView.Dispose();
+        var tabIndex = _tabs.IndexOf(tabSession);
 
-        if (tabInfo.TabButton != null)
-        {
-            TabButtonsPanel.Children.Remove(tabInfo.TabButton);
-        }
-        _tabs.Remove(tabInfo);
+        tabSession.Cleanup();
 
-        if (_selectedTab == tabInfo)
+        _tabs.Remove(tabSession);
+
+        if (_selectedTab == tabSession)
         {
             var newIndex = Math.Min(tabIndex, _tabs.Count - 1);
-            SelectTab(_tabs[newIndex]);
+            if (_tabs.Count > 0)
+            {
+                SelectTab(_tabs[newIndex]);
+            }
         }
-    }
-
-    private void ConfigureWebView(WebView2 webView)
-    {
-        webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
-        webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
-        webView.CoreWebView2.Settings.IsPasswordAutosaveEnabled = false;
-        webView.CoreWebView2.Settings.IsGeneralAutofillEnabled = false;
-        webView.CoreWebView2.Profile.PreferredColorScheme = CoreWebView2PreferredColorScheme.Dark;
-    }
-
-    private void RegisterTabEventHandlers(WebView2 webView)
-    {
-        webView.CoreWebView2.ProcessFailed += (s, e) => OnTabProcessFailed(webView, e);
-        webView.CoreWebView2.NavigationCompleted += (s, e) => OnTabNavigationCompleted(webView, e);
-        webView.CoreWebView2.NavigationStarting += (s, e) => OnTabNavigationStarting(webView, e);
-        webView.CoreWebView2.SourceChanged += (s, e) => OnTabSourceChanged(webView, e);
     }
 
     private void OnTabNavigationCompleted(WebView2 webView, CoreWebView2NavigationCompletedEventArgs e)
     {
-        var tabInfo = _tabs.FirstOrDefault(t => t.WebView == webView);
-        if (tabInfo == null) return;
+        var tabSession = _tabs.FirstOrDefault(t => t.WebView == webView);
+        if (tabSession == null) return;
 
         if (e.IsSuccess)
         {
@@ -315,8 +298,8 @@ public partial class MainWindow : Window
 
     private void OnTabSourceChanged(WebView2 webView, CoreWebView2SourceChangedEventArgs e)
     {
-        var tabInfo = _tabs.FirstOrDefault(t => t.WebView == webView);
-        if (tabInfo == null) return;
+        var tabSession = _tabs.FirstOrDefault(t => t.WebView == webView);
+        if (tabSession == null) return;
 
         if (webView.CoreWebView2?.Source == null) return;
 
@@ -333,13 +316,13 @@ public partial class MainWindow : Window
         {
             if (e.IsAvailable && _isInitialized && _selectedTab?.WebView?.CoreWebView2 != null)
             {
-                if (TabContentPresenter.Content == null || LoadingScreen.Visibility == Visibility.Visible)
+                if (WebViewContainer.Child == null || LoadingScreen.Visibility == Visibility.Visible)
                 {
                     ShowLoading("Connection restored. Reconnecting...", 0.5);
                 }
                 _selectedTab.WebView.Source = new Uri("https://web.whatsapp.com");
             }
-            else if (!e.IsAvailable && TabContentPresenter.Content != null)
+            else if (!e.IsAvailable && WebViewContainer.Child != null)
             {
                 ShowError("Connection Lost",
                     "Your internet connection has been lost.\n\nThe app will automatically reconnect when the connection is restored.",
@@ -352,7 +335,7 @@ public partial class MainWindow : Window
     {
         LoadingScreen.Visibility = Visibility.Visible;
         ErrorScreen.Visibility = Visibility.Collapsed;
-        TabContentPresenter.Visibility = Visibility.Collapsed;
+        TabContentGrid.Visibility = Visibility.Collapsed;
         LoadingStatus.Text = status;
 
         if (progressPercent.HasValue)
@@ -385,11 +368,11 @@ public partial class MainWindow : Window
         if (LoadingScreen.Visibility == Visibility.Visible)
         {
             var fadeOut = new DoubleAnimation(0.0, TimeSpan.FromMilliseconds(200));
-            fadeOut.Completed += (s, e) =>
+            fadeOut.Completed += (s, ev) =>
             {
                 LoadingScreen.Visibility = Visibility.Collapsed;
                 ErrorScreen.Visibility = Visibility.Visible;
-                TabContentPresenter.Visibility = Visibility.Collapsed;
+                TabContentGrid.Visibility = Visibility.Collapsed;
                 ShowErrorContent(title, message, errorType);
             };
             LoadingScreen.BeginAnimation(OpacityProperty, fadeOut);
@@ -398,7 +381,7 @@ public partial class MainWindow : Window
         {
             LoadingScreen.Visibility = Visibility.Collapsed;
             ErrorScreen.Visibility = Visibility.Visible;
-            TabContentPresenter.Visibility = Visibility.Collapsed;
+            TabContentGrid.Visibility = Visibility.Collapsed;
             ShowErrorContent(title, message, errorType);
         }
     }
@@ -436,15 +419,15 @@ public partial class MainWindow : Window
     private void ShowBrowser()
     {
         var fadeOut = new DoubleAnimation(0.0, TimeSpan.FromMilliseconds(200));
-        fadeOut.Completed += (s, e) =>
+        fadeOut.Completed += (s, ev) =>
         {
             LoadingScreen.Visibility = Visibility.Collapsed;
             ErrorScreen.Visibility = Visibility.Collapsed;
-            TabContentPresenter.Visibility = Visibility.Visible;
+            TabContentGrid.Visibility = Visibility.Visible;
 
-            TabContentPresenter.Opacity = 0;
+            TabContentGrid.Opacity = 0;
             var fadeInBrowser = new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(300));
-            TabContentPresenter.BeginAnimation(OpacityProperty, fadeInBrowser);
+            TabContentGrid.BeginAnimation(OpacityProperty, fadeInBrowser);
         };
 
         if (LoadingScreen.Visibility == Visibility.Visible)
@@ -459,10 +442,10 @@ public partial class MainWindow : Window
         {
             LoadingScreen.Visibility = Visibility.Collapsed;
             ErrorScreen.Visibility = Visibility.Collapsed;
-            TabContentPresenter.Visibility = Visibility.Visible;
-            TabContentPresenter.Opacity = 0;
+            TabContentGrid.Visibility = Visibility.Visible;
+            TabContentGrid.Opacity = 0;
             var fadeInBrowser = new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(300));
-            TabContentPresenter.BeginAnimation(OpacityProperty, fadeInBrowser);
+            TabContentGrid.BeginAnimation(OpacityProperty, fadeInBrowser);
         }
     }
 
@@ -520,8 +503,9 @@ public partial class MainWindow : Window
         NetworkChange.NetworkAvailabilityChanged -= OnNetworkAvailabilityChanged;
         foreach (var tab in _tabs)
         {
-            tab.WebView.Dispose();
+            tab.Cleanup();
         }
+        _tabs.Clear();
         Close();
     }
 
@@ -571,10 +555,82 @@ public partial class MainWindow : Window
         Unknown
     }
 
-    private class TabInfo
+    private class TabSession : IDisposable
     {
-        public WebView2 WebView { get; set; } = null!;
+        public WebView2 WebView { get; }
         public Button? TabButton { get; set; }
-        public string TabName { get; set; } = "";
+        public string TabName { get; }
+
+        private EventHandler<CoreWebView2ProcessFailedEventArgs>? _processFailedHandler;
+        private EventHandler<CoreWebView2NavigationCompletedEventArgs>? _navigationCompletedHandler;
+        private EventHandler<CoreWebView2NavigationStartingEventArgs>? _navigationStartingHandler;
+        private EventHandler<CoreWebView2SourceChangedEventArgs>? _sourceChangedHandler;
+
+        public TabSession(WebView2 webView, string tabName)
+        {
+            WebView = webView;
+            TabName = tabName;
+        }
+
+        public void ConfigureAndRegisterHandlers(WebView2 webView)
+        {
+            webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
+            webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+            webView.CoreWebView2.Settings.IsPasswordAutosaveEnabled = false;
+            webView.CoreWebView2.Settings.IsGeneralAutofillEnabled = false;
+            webView.CoreWebView2.Profile.PreferredColorScheme = CoreWebView2PreferredColorScheme.Dark;
+
+            _processFailedHandler = (s, e) => OnTabProcessFailed(webView, e);
+            _navigationCompletedHandler = (s, e) => OnTabNavigationCompleted(webView, e);
+            _navigationStartingHandler = (s, e) => OnTabNavigationStarting(webView, e);
+            _sourceChangedHandler = (s, e) => OnTabSourceChanged(webView, e);
+
+            webView.CoreWebView2.ProcessFailed += _processFailedHandler;
+            webView.CoreWebView2.NavigationCompleted += _navigationCompletedHandler;
+            webView.CoreWebView2.NavigationStarting += _navigationStartingHandler;
+            webView.CoreWebView2.SourceChanged += _sourceChangedHandler;
+        }
+
+        public void Cleanup()
+        {
+            if (WebView.CoreWebView2 != null)
+            {
+                if (_processFailedHandler != null)
+                    WebView.CoreWebView2.ProcessFailed -= _processFailedHandler;
+                if (_navigationCompletedHandler != null)
+                    WebView.CoreWebView2.NavigationCompleted -= _navigationCompletedHandler;
+                if (_navigationStartingHandler != null)
+                    WebView.CoreWebView2.NavigationStarting -= _navigationStartingHandler;
+                if (_sourceChangedHandler != null)
+                    WebView.CoreWebView2.SourceChanged -= _sourceChangedHandler;
+            }
+
+            if (TabButton != null)
+            {
+                TabButton.Click -= OnTabButtonClick;
+                TabButton.DataContext = null;
+                if (TabButton.Parent is System.Windows.Controls.Panel panel)
+                {
+                    panel.Children.Remove(TabButton);
+                }
+                TabButton = null;
+            }
+
+            WebView.Dispose();
+        }
+
+        private void OnTabButtonClick(object sender, RoutedEventArgs e)
+        {
+        }
+
+        private void OnTabProcessFailed(WebView2 webView, CoreWebView2ProcessFailedEventArgs e) { }
+        private void OnTabNavigationCompleted(WebView2 webView, CoreWebView2NavigationCompletedEventArgs e) { }
+        private void OnTabNavigationStarting(WebView2 webView, CoreWebView2NavigationStartingEventArgs e) { }
+        private void OnTabSourceChanged(WebView2 webView, CoreWebView2SourceChangedEventArgs e) { }
+
+        public void Dispose()
+        {
+            Cleanup();
+        }
     }
 }
